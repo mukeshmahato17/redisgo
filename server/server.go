@@ -5,6 +5,8 @@ import (
 	"io"
 	"log"
 	"net"
+
+	"github.com/mukeshmahato17/goredis/resp"
 )
 
 type Server struct {
@@ -43,7 +45,7 @@ func (s *Server) acceptLoop(ln net.Listener) error {
 func (s *Server) readConn(conn net.Conn) {
 	buf := make([]byte, 512)
 	for {
-		n, err := conn.Read(buf)
+		_, err := conn.Read(buf)
 		if err != nil {
 			if err == io.EOF {
 				s.connectedClient--
@@ -52,11 +54,9 @@ func (s *Server) readConn(conn net.Conn) {
 			}
 			fmt.Println("error", err)
 		}
+		val, err := resp.Decode(buf)
+		fmt.Println(val)
 
-		fmt.Printf("%q\n", buf[:n])
-		if _, err := conn.Write(buf[:n]); err != nil {
-			fmt.Println("write error:", err)
-			return
-		}
+		conn.Write([]byte("+OK\r\n"))
 	}
 }
