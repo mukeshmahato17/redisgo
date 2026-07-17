@@ -43,20 +43,46 @@ func (s *Server) acceptLoop(ln net.Listener) error {
 }
 
 func (s *Server) readConn(conn net.Conn) {
-	buf := make([]byte, 512)
 	for {
-		_, err := conn.Read(buf)
+		cmd, err := readCommand(conn)
 		if err != nil {
+			conn.Close()
+			s.connectedClient--
+			fmt.Println("client disconnected:", conn.RemoteAddr(), "connected client:", s.connectedClient)
 			if err == io.EOF {
-				s.connectedClient--
-				fmt.Println("client disconnected:", conn.RemoteAddr(), "connected client:", s.connectedClient)
 				break
 			}
-			fmt.Println("error", err)
 		}
-		val, err := resp.Decode(buf)
-		fmt.Println(val)
-
-		conn.Write([]byte("+OK\r\n"))
+		respond(cmd, conn)
 	}
+}
+
+func readCommand(conn net.Conn) (*resp.RedisCmd, error) {
+	buf := make([]byte, 512)
+	n, err := conn.Read(buf[:])
+	if err != nil {
+		return nil, err
+	}
+
+	token, err := resp.DecodeArrayString(buf[:n])
+	if err != nil {
+		return nil, err
+	}
+
+	return &resp.RedisCmd{
+		Command: token[0],
+		Args:    token[1:],
+	}, nil
+}
+
+func respond(cmd *resp.RedisCmd, conn net.Conn) {
+	fmt.Println(cmd)
+	err := resp.EvalAndRespond(cmd, conn)
+	if err != nil {
+		respondError(err, conn)
+	}
+}
+
+func respondError(err error, conn net.Conn) {
+	conn.Write([]byte(fmt.Sprintf("%s\r\n", err)))
 }

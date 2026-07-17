@@ -35,25 +35,22 @@ func DecodeOne(data []byte) (any, int, error) {
 }
 
 func readLength(data []byte) (int, int) {
-	var (
-		// []byte("$6\r\nhello\r\n")
-		pos = 0
-		len = 0
-	)
-	for pos = range data {
-		b := data[pos]
-		if !(b >= '0') && (b <= '9') {
-			return len, pos + 2
+	length := 0
+
+	for i, b := range data {
+		if b < '0' || b > '9' {
+			return length, i + 2
 		}
-		len = len*10 + int(b-'0')
+		length = length*10 + int(b-'0')
 	}
+
 	return 0, 0
 }
 
 func readArray(data []byte) (any, int, error) {
 	pos := 1
 
-	count, delta := readLength(data)
+	count, delta := readLength(data[pos:])
 	pos += delta
 
 	var elements []interface{} = make([]interface{}, count)

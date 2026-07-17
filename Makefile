@@ -3,5 +3,5 @@
 build:
 	@go build -o bin/redisgo main.go
 
-redisgo: build
+run: build
 	@./bin/redisgo
